@@ -177,4 +177,8 @@ cython_debug/
 #token files
 
 *tokens.*
+
+private_key_base64.txt
+*private_key.pem
+
 .vercel

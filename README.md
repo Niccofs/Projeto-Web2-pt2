@@ -10,15 +10,22 @@ A estrutura de pastas é organizada para refletir a separação de responsabilid
 
 ```
 src/
+  ├── api/
+      ├── app.js
+      ├── index.js
   ├── models/
-      └── Laboratorio.js
+      ├── Laboratorio.js
+      └── user.js
+  ├── routers/
+      ├── authController.js
+      └── laboratorioController.js    
   ├── middlewares/
       ├── authMiddleware.js
       └── restrictAccessMiddleware.js
+  ├── utils
+      └── generate-keys.js
   ├── index.js
-  ├── laboratorioController.js
   ├── package.json
-  ├── users.js  
 ```
 
 ## 🔨 Funcionalidades do Projeto
