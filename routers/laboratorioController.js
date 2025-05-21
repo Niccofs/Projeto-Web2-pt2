@@ -69,7 +69,7 @@ router.post(
     //const formData = new FormData();
 
     // formData.append("image", foto.buffer); // Adiciona a foto ao FormData com o nome "image"
-    console.log("tentando upar foto pro cloudinary")
+    console.log("tentando upar foto para o cloudinary")
 
     try {
       const result = await uploadToCloudinary(foto.buffer);

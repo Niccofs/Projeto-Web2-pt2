@@ -20,11 +20,12 @@ app.get("/api", (_, res) => {
 
 // Rota de login
 // Apenas para tests locais
-
-// app.listen(PORT, async () => {
-//   await connectDB();
-//   console.log(`Servidor rodando na porta ${PORT}`);
-// });
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, async () => {
+    await connectDB();
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+}
 
 // vercel
 

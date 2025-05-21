@@ -182,3 +182,4 @@ private_key_base64.txt
 *private_key.pem
 
 .vercel
+vercel.json
