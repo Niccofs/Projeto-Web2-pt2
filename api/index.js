@@ -5,6 +5,8 @@ const { PORT, appConfig } = require("../config");
 const connectDB = require("../config/database");
 const labRouter = require("../routers/laboratorioController");
 const authRouter = require("../routers/authController");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const app = express();
 
@@ -12,6 +14,14 @@ app.use(appConfig);
 app.use(restrictAccessMiddleware);
 app.use(labRouter);
 app.use(authRouter);
+// Disponibiliza io para os routers
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
+
+// Rota POST /bloquear/:lab
+app.use(labRouter);
 
 // Home
 app.get("/api", (_, res) => {

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor de Laboratórios</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+        .mensagem {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #ffdddd;
+            border: 1px solid #cc0000;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Status dos Laboratórios</h1>
+    <p>Ouvindo por bloqueios de laboratórios...</p>
+    <div id="mensagens"></div>
+
+    <script>
+        const socket = io();
+
+        // Liste os laboratórios que você quer escutar
+        const labs = [1, 2, 3, 4];
+
+        labs.forEach(lab => {
+            const canal = `bloquear(${lab})`;
+            socket.on(canal, data => {
+                const div = document.createElement("div");
+                div.className = "mensagem";
+                div.textContent = data.mensagem;
+                document.getElementById("mensagens").prepend(div);
+            });
+        });
+    </script>
+</body>
+</html>

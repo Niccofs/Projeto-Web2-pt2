@@ -6,6 +6,8 @@ const axios = require("axios")
 const { upload } = require("../config");
 const router = express.Router();
 const { uploadToCloudinary } = require("../config/cloudinary")
+const fs = require("fs");
+const path = require("path");
 
 router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
   try {
@@ -66,9 +68,6 @@ router.post(
       return res.status(400).json({ erro: "Falta foto" });
     }
 
-    //const formData = new FormData();
-
-    // formData.append("image", foto.buffer); // Adiciona a foto ao FormData com o nome "image"
     console.log("tentando upar foto para o cloudinary")
 
     try {
@@ -115,6 +114,54 @@ router.delete("/api/laboratorio/:id", authMiddleware, async (req, res) => {
     console.error("Erro ao excluir laboratório:", err);
     res.status(500).json({ erro: "Erro ao excluir laboratório" });
   }
+});
+
+router.get("/api/videoTutorial", (req, res) => {
+   const videoPath = path.resolve(__dirname, "..", "tests", "uploads", "video.mp4");
+    const videoStat = fs.statSync(videoPath);
+    const fileSize = videoStat.size;
+    const range = req.headers.range;
+
+    if (range) {
+        // Transmissão parcial (streaming)
+        const CHUNK_SIZE = 10 ** 6; // 1MB por chunk
+        const start = Number(range.replace(/\D/g, ""));
+        const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
+
+        const contentLength = end - start + 1;
+        const headers = {
+            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": contentLength,
+            "Content-Type": "video/mp4",
+        };
+
+        res.writeHead(206, headers);
+        const videoStream = fs.createReadStream(videoPath, { start, end });
+        videoStream.pipe(res);
+    } else {
+        // Envio completo do vídeo (download direto)
+        const headers = {
+            "Content-Length": fileSize,
+            "Content-Type": "video/mp4",
+        };
+
+        res.writeHead(200, headers);
+        const videoStream = fs.createReadStream(videoPath);
+        videoStream.pipe(res);
+    }
+});
+
+router.post("/bloquear/:lab", (req, res) => {
+    const lab = req.params.lab;
+    const canal = `bloquear(${lab})`;
+
+    // Emitir para todos os sockets conectados
+    req.io.emit(canal, {
+        mensagem: `Laboratório ${lab} foi bloqueado.`,
+    });
+
+    res.json({ status: "ok", canal });
 });
 
 module.exports = router;
