@@ -3,25 +3,25 @@ const restrictAccessMiddleware = require("../middlewares/restrictAccess");
 const serverless = require("serverless-http");
 const { PORT, appConfig } = require("../config");
 const connectDB = require("../config/database");
+const path = require("path");
+const app = express();
+
 const labRouter = require("../routers/laboratorioController");
 const authRouter = require("../routers/authController");
 const http = require("http");
-const { Server } = require("socket.io");
+const socketIO = require('./socket'); 
+const server = http.createServer(app);
 
-const app = express();
+socketIO.init(server);
 
 app.use(appConfig);
 app.use(restrictAccessMiddleware);
 app.use(labRouter);
 app.use(authRouter);
-// Disponibiliza io para os routers
-app.use((req, res, next) => {
-    req.io = io;
-    next();
-});
 
-// Rota POST /bloquear/:lab
-app.use(labRouter);
+
+
+app.use(express.static(path.join(__dirname, "..", "public")));
 
 // Home
 app.get("/api", (_, res) => {
@@ -31,13 +31,14 @@ app.get("/api", (_, res) => {
 // Rota de login
 // Apenas para tests locais
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, async () => {
+
+  server.listen(PORT, async () => {
     await connectDB();
     console.log(`Servidor rodando na porta ${PORT}`);
   });
-}
+
+} 
 
 // vercel
-
 module.exports = app;
 module.exports.handler = serverless(app);

@@ -1,43 +1,49 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Monitor de Laboratórios</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-        }
-        .mensagem {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #ffdddd;
-            border: 1px solid #cc0000;
-            border-radius: 5px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title> 🔊 Notificações de Laboratórios</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #notifications p { padding: 5px; margin: 5px 0; background: #f0f0f0; border-left: 4px solid #007bff; }
+  </style>
 </head>
 <body>
-    <h1>Status dos Laboratórios</h1>
-    <p>Ouvindo por bloqueios de laboratórios...</p>
-    <div id="mensagens"></div>
+  <h1>Bloqueio de Laboratório</h1>
+  <h2>Laboratórios bloqueados aparecerão aqui</h2>
+  <div id="notifications"></div>
 
-    <script>
-        const socket = io();
+  <script>
+    try{
+        console.log("meu pau")
+        const socket = io('http://localhost:3500');
 
-        // Liste os laboratórios que você quer escutar
-        const labs = [1, 2, 3, 4];
-
-        labs.forEach(lab => {
-            const canal = `bloquear(${lab})`;
-            socket.on(canal, data => {
-                const div = document.createElement("div");
-                div.className = "mensagem";
-                div.textContent = data.mensagem;
-                document.getElementById("mensagens").prepend(div);
-            });
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor com sucesso.');
         });
-    </script>
+
+        socket.onAny((event, data) => {
+        console.log(`Evento recebido: ${event} com os dados: ${data}`);
+        const div = document.getElementById('notifications');
+        const p = document.createElement('p');
+        p.textContent = `[${event}] ${data?.mensagem || 'Mensagem vazia'}`;
+        div.appendChild(p);
+        });
+
+        const labs = ['laboratorio-informatica', 'laboratorio-redes', 'laboratorio-movel'];
+        labs.forEach((lab) => {
+        const canal = `bloquear:${lab}`;
+        socket.on(canal, (data) => {
+            const div = document.getElementById('notifications');
+            const p = document.createElement('p');
+            p.textContent = data.mensagem;
+            div.appendChild(p);
+        });
+        });
+    } catch (error) {
+        throw new Error("deu ruim nego", error)
+    }
+  </script>
 </body>
 </html>

@@ -8,6 +8,7 @@ const router = express.Router();
 const { uploadToCloudinary } = require("../config/cloudinary")
 const fs = require("fs");
 const path = require("path");
+const socketIO = require('../api/socket'); 
 
 router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
   try {
@@ -116,7 +117,7 @@ router.delete("/api/laboratorio/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.get("/api/videoTutorial", (req, res) => {
+router.get("/api/videoTutorial", authMiddleware, (req, res) => {
    const videoPath = path.resolve(__dirname, "..", "tests", "uploads", "video.mp4");
     const videoStat = fs.statSync(videoPath);
     const fileSize = videoStat.size;
@@ -152,16 +153,34 @@ router.get("/api/videoTutorial", (req, res) => {
     }
 });
 
-router.post("/bloquear/:lab", (req, res) => {
-    const lab = req.params.lab;
-    const canal = `bloquear(${lab})`;
+router.get("/api/bloquear", (req, res) => {
 
-    // Emitir para todos os sockets conectados
-    req.io.emit(canal, {
-        mensagem: `Laboratório ${lab} foi bloqueado.`,
-    });
-
-    res.json({ status: "ok", canal });
+    const filePath = path.join(__dirname, "..", "public", "index.html");
+    res.sendFile(filePath);
 });
+
+router.post("/api/bloquear/:lab", authMiddleware, async (req, res) => {
+      const lab = req.params.lab;
+      console.log(`lab: ${lab}`)
+    
+      try {
+        const laboratorio = await modelLab.findByIdAndUpdate(
+          { _id: lab },
+          { $set: { blocked: true } }
+        );
+    
+        if (!laboratorio) {
+          return res.status(404).json({ erro: 'Laboratório não encontrado.' });
+        }
+    
+        const canal = "Bloqueado";
+        socketIO.getIO().emit(canal, { mensagem: `Laboratório ${lab} foi bloqueado.` });
+    
+        res.status(200).json({ mensagem: `Laboratório ${lab} foi bloqueado.` });
+      } catch (erro) {
+        throw new Error(`Erro interno: ${erro}`)
+      }
+    }
+);
 
 module.exports = router;
