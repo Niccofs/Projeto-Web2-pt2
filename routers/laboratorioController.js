@@ -9,6 +9,7 @@ const { uploadToCloudinary } = require("../config/cloudinary")
 const fs = require("fs");
 const path = require("path");
 const socketIO = require('../api/socket'); 
+let temperaturaAtual = null;
 
 router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
   try {
@@ -36,7 +37,7 @@ router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
           const buffer = Buffer.from(response.data, 'binary');
           doc.image(buffer, { width: 200, height: 200, align: 'center' });
         } catch (err) {
-          doc.text('[Erro ao carregar imagem]');
+          doc.text('[Erro ao carregar imagem]', err);
         }
       }
       
@@ -182,5 +183,25 @@ router.post("/api/bloquear/:lab", authMiddleware, async (req, res) => {
       }
     }
 );
+
+router.get("/api/temperatura", (req, res) => {
+  const { temp } = req.query;
+
+  if (!temp) {
+    return res.status(400).send("Temperatura não informada.");
+  }
+
+  temperaturaAtual = temp;
+  console.log(`Temperatura recebida do Wokwi: ${temp}°C`);
+  res.send("Temperatura registrada com sucesso.");
+});
+
+router.get("/api/temperaturaAtual", (req, res) => {
+  if (!temperaturaAtual) {
+    return res.status(404).send("Nenhuma temperatura registrada ainda.");
+  }
+
+  res.json({ temperatura: temperaturaAtual });
+});
 
 module.exports = router;

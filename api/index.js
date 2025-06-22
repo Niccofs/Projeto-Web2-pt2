@@ -12,14 +12,13 @@ const http = require("http");
 const socketIO = require('./socket'); 
 const server = http.createServer(app);
 
+
 socketIO.init(server);
 
 app.use(appConfig);
 app.use(restrictAccessMiddleware);
 app.use(labRouter);
 app.use(authRouter);
-
-
 
 app.use(express.static(path.join(__dirname, "..", "public")));
 
