@@ -31,9 +31,16 @@ functions:
 package:
   individually: true
   excludeDevDependencies: true
+  exclude:
+    - .vscode/**
+    - .pio/**
+    - README.md
+    - vercel.json
+    - readme_lab.png
+    - lambda.zip
+    - .vercel
   patterns:
     - '!**/*.test.js'
-    - '!node_modules/aws-sdk/**'  # já disponível no ambiente Lambda
     - '!README.md'
     - '!**/.gitignore'
     - '!**/.git/**'

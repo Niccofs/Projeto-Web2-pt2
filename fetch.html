@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script>
+      fetch("https://8o7ws2tom5.execute-api.us-east-1.amazonaws.com/dev/api/videoTutorial", {
+        headers: {
+          Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NTllY2I1NDg4Zjk4ZTdhMmU1N2I1NyIsImVtYWlsIjoiYWRtaW5AdGVzdGUuY29tIiwiaWF0IjoxNzUwODY1NDg1LCJleHAiOjE3NTA4NjkwODV9.Llq4SRiBM2nw81EjnWNgN07fRbIgXTPST8ifPm4XT-w"
+        }
+      })
+        .then(res => res.text())
+        .then(console.log)
+        .catch(console.error);
+    </script>
+  </body>
+</html>

@@ -5,9 +5,8 @@ const PDFDocument = require("pdfkit");
 const axios = require("axios")
 const { upload } = require("../config");
 const router = express.Router();
-const { uploadToCloudinary } = require("../config/cloudinary")
-//const { cloudinary } = require('../config/cloudinary');
-const fs = require("fs");
+//const { uploadToCloudinary } = require("../config/cloudinary")
+const { uploadToS3, streamFromS3 } = require("../utils/s3");
 const path = require("path");
 let temperaturaAtual = null;
 
@@ -16,6 +15,7 @@ router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
     const laboratorios = await modelLab.find();
 
     const doc = new PDFDocument();
+    
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "attachment; filename=relatorio.pdf");
 
@@ -25,34 +25,47 @@ router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
     doc.moveDown();
 
     for (const lab of laboratorios) {
+      console.log(lab);
+
       doc.fontSize(12).text(`Id: ${lab.id}`);
       doc.fontSize(14).text(`Nome: ${lab.nome}`);
       doc.fontSize(12).text(`Descrição: ${lab.descricao}`);
       doc.text(`Capacidade: ${lab.capacidade}`);
-
       doc.text("Foto:");
+
       if (lab.foto) {
         try {
-          const response = await axios.get(lab.foto, { responseType: 'arraybuffer' });
-          const buffer = Buffer.from(response.data, 'binary');
-          doc.image(buffer, { width: 200, height: 200, align: 'center' });
+          const response = await axios.get(lab.foto, {
+            responseType: "arraybuffer",
+          });
+          const buffer = Buffer.from(response.data, "binary");
+
+          doc.image(buffer, { width: 200, height: 200, align: "center" });
         } catch (err) {
-          doc.text('[Erro ao carregar imagem]', err);
+          console.error("Erro ao carregar imagem:", err.message);
+          doc.fontSize(10).text("[Erro ao carregar imagem]");
         }
       }
-      
-      //doc.image(lab.foto, { width: 200, fit: [250, 250], align: "left" });
 
-      // Linha divisória
       doc.moveDown();
       doc.text("-------------------------------");
       doc.moveDown();
     }
 
     doc.end();
+
+    // Opcional: adicionar listener para quando a resposta acabar
+    await new Promise((resolve, reject) => {
+      writeStream.on('finish', resolve);
+      writeStream.on('error', reject);
+    });
+
+    console.log(`PDF gerado com sucesso em: ${filePath}`);
   } catch (err) {
     console.error("Erro ao gerar relatório:", err);
-    res.status(500).json({ erro: "Erro ao gerar relatório" });
+    if (!res.headersSent) {
+      res.status(500).json({ erro: "Erro ao gerar relatório" });
+    }
   }
 });
 
@@ -63,26 +76,28 @@ router.post(
   authMiddleware,
   upload.single("foto"),
   async (req, res) => {
-    const { nome, descricao, capacidade } = req.body;
-    const foto = req.file;
-
-    if (!foto) {
-      return res.status(400).json({ erro: "Falta foto" });
-    }
-
-        console.log("Arquivo recebido:", {
-      originalname: foto.originalname,
-      mimetype: foto.mimetype,
-      size: foto.size,
-    });
-
-    console.log("tentando upar foto para o cloudinary")
     try {
-      const result = await uploadToCloudinary(foto.buffer);
-      //const result = await cloudinary.uploader.upload(foto, { resource_type: 'image' });
-      console.log(`url: ${result.secure_url}`)
+      const { nome, descricao, capacidade } = req.body;
+      const foto = req.file;
+      const capacidade_parsed = parseInt(capacidade, 10)
 
-      if (!nome || !descricao || !capacidade) {
+      if (!foto) {
+        return res.status(400).json({ erro: "Falta foto" });
+      }
+
+          console.log("Arquivo recebido:", {
+        originalname: foto.originalname,
+        mimetype: foto.mimetype,
+        size: foto.size,
+      });
+
+      console.log("tentando upar foto para o s3")
+    
+      //const result = await uploadToCloudinary(foto.buffer);
+      const s3Url = await uploadToS3(foto.buffer, foto.mimetype, foto.originalname);
+      console.log(`url: ${s3Url}`)
+
+      if (!nome || !descricao || isNaN(capacidade)) {
         return res
           .status(400)
           .json({ erro: "Nome, descrição e capacidade são obrigatórios" });
@@ -91,8 +106,8 @@ router.post(
       const novoLab = await modelLab.create({
         nome,
         descricao,
-        capacidade,
-        foto: result.secure_url || null,
+        capacidade: capacidade_parsed,
+        foto: s3Url || null,
       });
       res.status(201).json({
         mensagem: "Laboratório cadastrado com foto",
@@ -124,41 +139,37 @@ router.delete("/api/laboratorio/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.get("/api/videoTutorial", authMiddleware, (req, res) => {
-   const videoPath = path.resolve(__dirname, "..", "tests", "uploads", "video.mp4");
-    const videoStat = fs.statSync(videoPath);
-    const fileSize = videoStat.size;
-    const range = req.headers.range;
+router.get("/api/videoTutorial", authMiddleware, async (req, res) => {
+  const range = req.headers.range || 'bytes=0-';
+  const key = "tutorial/0625.mp4";
 
-    if (range) {
-        // Transmissão parcial (streaming)
-        const CHUNK_SIZE = 10 ** 6; // 1MB por chunk
-        const start = Number(range.replace(/\D/g, ""));
-        const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
+  if (!range) {
+    return res.status(416).send("Range header é necessário para streaming.");
+  }
 
-        const contentLength = end - start + 1;
-        const headers = {
-            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-            "Accept-Ranges": "bytes",
-            "Content-Length": contentLength,
-            "Content-Type": "video/mp4",
-        };
+  try {
+    const { stream, fileSize, start, end } = await streamFromS3(key, range);
 
-        res.writeHead(206, headers);
-        const videoStream = fs.createReadStream(videoPath, { start, end });
-        videoStream.pipe(res);
-    } else {
-        // Envio completo do vídeo (download direto)
-        const headers = {
-            "Content-Length": fileSize,
-            "Content-Type": "video/mp4",
-        };
+    const contentLength = end - start + 1;
+    const headers = {
+      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": contentLength,
+      "Content-Type": "video/mp4",
+    };
 
-        res.writeHead(200, headers);
-        const videoStream = fs.createReadStream(videoPath);
-        videoStream.pipe(res);
-    }
+    res.writeHead(206, headers);
+    stream.pipe(res);
+    stream.on("error", (err) => {
+      console.error("Erro ao fazer streaming do S3:", err);
+      res.status(500).end();
+    });
+  } catch (err) {
+    console.error("Erro ao recuperar vídeo:", err);
+    res.status(500).json({ erro: "Erro ao recuperar vídeo" });
+  }
 });
+
 
 router.get("/api/bloquear", (req, res) => {
 
@@ -181,7 +192,7 @@ router.post("/api/bloquear/:lab", authMiddleware, async (req, res) => {
     }
 
     const message = `Laboratório ${lab} foi bloqueado.`;
-    sseClients.forEach(client => client.write(`data: ${JSON.stringify({ mensagem: message })}\n\n`));
+    //sseClients.forEach(client => client.write(`data: ${JSON.stringify({ mensagem: message })}\n\n`));
 
     res.status(200).json({ mensagem: message });
   } catch (erro) {

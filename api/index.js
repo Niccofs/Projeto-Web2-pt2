@@ -5,29 +5,36 @@ const connectDB = require("../config/database");
 const path = require("path");
 const app = express();
 
-app.use(express.json());
-
 const { PORT, appConfig } = require("../config");
 const labRouter = require("../routers/laboratorioController");
 const authRouter = require("../routers/authController");
 const http = require("http");
-const socketIO = require('./socket'); 
 const server = http.createServer(app);
 
-
-socketIO.init(server);
 
 // Garantir conversão buffer bas64 (api gateway) para JSON
 app.use(async (req, res, next) => {
   try {
-    if (req.body && Buffer.isBuffer(req.body)) {
-      // Se for Buffer, converte para string e depois para JSON
-      const text = req.body.toString('utf8');
-      req.body = JSON.parse(text);
+    const contentType = req.headers["content-type"] || "";
+
+    if (
+      contentType.includes("application/json") &&
+      req.body &&
+      Buffer.isBuffer(req.body)
+    ) {
+      const text = req.body.toString('utf8').trim();
+      
+      if (text) {
+        req.body = JSON.parse(text);
+      } else {
+        req.body = {}; // ou null, dependendo da sua lógica
+      }
     }
   } catch (err) {
-    throw new Error(err)
+    console.error("Erro ao fazer parse do corpo JSON:", err.message);
+    return res.status(400).json({ erro: "JSON inválido no corpo da requisição" });
   }
+
   next();
 });
 
