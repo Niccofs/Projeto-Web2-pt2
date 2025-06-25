@@ -183,3 +183,12 @@ private_key_base64.txt
 
 .vercel
 vercel.json
+
+#platformio
+.pio
+
+.vscode
+
+*.zip*
+
+.serverless

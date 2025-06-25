@@ -6,9 +6,9 @@ const axios = require("axios")
 const { upload } = require("../config");
 const router = express.Router();
 const { uploadToCloudinary } = require("../config/cloudinary")
+//const { cloudinary } = require('../config/cloudinary');
 const fs = require("fs");
 const path = require("path");
-const socketIO = require('../api/socket'); 
 let temperaturaAtual = null;
 
 router.get("/api/laboratorio/relatorio", authMiddleware, async (_, res) => {
@@ -70,10 +70,16 @@ router.post(
       return res.status(400).json({ erro: "Falta foto" });
     }
 
-    console.log("tentando upar foto para o cloudinary")
+        console.log("Arquivo recebido:", {
+      originalname: foto.originalname,
+      mimetype: foto.mimetype,
+      size: foto.size,
+    });
 
+    console.log("tentando upar foto para o cloudinary")
     try {
       const result = await uploadToCloudinary(foto.buffer);
+      //const result = await cloudinary.uploader.upload(foto, { resource_type: 'image' });
       console.log(`url: ${result.secure_url}`)
 
       if (!nome || !descricao || !capacidade) {
@@ -161,28 +167,27 @@ router.get("/api/bloquear", (req, res) => {
 });
 
 router.post("/api/bloquear/:lab", authMiddleware, async (req, res) => {
-      const lab = req.params.lab;
-      console.log(`lab: ${lab}`)
-    
-      try {
-        const laboratorio = await modelLab.findByIdAndUpdate(
-          { _id: lab },
-          { $set: { blocked: true } }
-        );
-    
-        if (!laboratorio) {
-          return res.status(404).json({ erro: 'Laboratório não encontrado.' });
-        }
-    
-        const canal = "Bloqueado";
-        socketIO.getIO().emit(canal, { mensagem: `Laboratório ${lab} foi bloqueado.` });
-    
-        res.status(200).json({ mensagem: `Laboratório ${lab} foi bloqueado.` });
-      } catch (erro) {
-        throw new Error(`Erro interno: ${erro}`)
-      }
+  const lab = req.params.lab;
+  console.log(`lab: ${lab}`);
+
+  try {
+    const laboratorio = await modelLab.findByIdAndUpdate(
+      { _id: lab },
+      { $set: { blocked: true } }
+    );
+
+    if (!laboratorio) {
+      return res.status(404).json({ erro: 'Laboratório não encontrado.' });
     }
-);
+
+    const message = `Laboratório ${lab} foi bloqueado.`;
+    sseClients.forEach(client => client.write(`data: ${JSON.stringify({ mensagem: message })}\n\n`));
+
+    res.status(200).json({ mensagem: message });
+  } catch (erro) {
+    throw new Error(`Erro interno: ${erro}`);
+  }
+});
 
 router.get("/api/temperatura", (req, res) => {
   const { temp } = req.query;

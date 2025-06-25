@@ -24,6 +24,10 @@ router.post("/api/logar", async (req, res) => {
 router.post("/api/cadastrar", async (req, res) => {
   try {
     const { nome, email, senha } = req.body;
+    console.log("Dados recebidos: ", req.body);
+    if (!senha) {
+      return res.status(400).json({ erro: "Campo 'senha' é obrigatório." });
+    }
     const usuarioExistente = await User.findOne({ email });
     if (usuarioExistente)
       return res.status(400).json({ erro: "Usuário já cadastrado" });
@@ -32,6 +36,7 @@ router.post("/api/cadastrar", async (req, res) => {
     const novoUsuario = new User({ name: nome, email, password: senhaHash });
 
     await novoUsuario.save();
+    console.log("deu certo");
 
     res.status(201).json({ mensagem: "Usuário cadastrado com sucesso" });
   } catch (error) {

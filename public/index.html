@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title> 🔊 Notificações de Laboratórios</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!--<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>-->
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     #notifications p { padding: 5px; margin: 5px 0; background: #f0f0f0; border-left: 4px solid #007bff; }
@@ -16,7 +16,6 @@
 
   <script>
     try{
-        console.log("meu pau")
         const socket = io('http://localhost:80');
 
         socket.on('connect', () => {

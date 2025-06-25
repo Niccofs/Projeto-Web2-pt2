@@ -1,0 +1,39 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: apigerenciamentolabs
+service: api-gerenciamento-salas
+
+provider:
+  name: aws
+  runtime: nodejs22.x  # mantenha compatível com a função existente
+  region: us-east-1    # ou a mesma região onde sua Lambda já está
+  #timeout: 300          # máximo para SSE em API Gateway
+  stage: dev           # ou outro, se você usa "prod"
+  httpApi:
+    payload: '2.0'
+  environment:
+    NODE_ENV: ${env:NODE_ENV}
+    MONGODB_URL: ${env:MONGODB_URL}
+    CLOUDINARY_API_SECRET: ${env:CLOUDINARY_API_SECRET}
+    CLOUDINARY_API_KEY: ${env:CLOUDINARY_API_KEY}
+    CLOUDINARY_CLOUD_NAME: ${env:CLOUDINARY_CLOUD_NAME}    
+    
+
+functions:
+  api:
+    name: api-gerenciamento-salas # <== Coloque aqui o nome EXATO da função já criada
+    handler: api/handler.handler
+    events:
+      - http:
+          path: /{proxy+}     # Roteamento para todas as rotas Express
+          method: any
+          cors: true
+
+package:
+  individually: true
+  excludeDevDependencies: true
+  patterns:
+    - '!**/*.test.js'
+    - '!node_modules/aws-sdk/**'  # já disponível no ambiente Lambda
+    - '!README.md'
+    - '!**/.gitignore'
+    - '!**/.git/**'
